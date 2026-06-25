@@ -2,3 +2,4 @@ node_modules/
 .lookout/
 *.log
 .DS_Store
+bun.lock
