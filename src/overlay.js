@@ -135,16 +135,26 @@ function openForm(el, x, y) {
 function closeForm() { form && form.remove(); form = null }
 
 async function send(payload) {
-  try {
-    await fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
-    flash('✓ sent to Grok')
-  } catch { flash('✗ send failed') }
   closeForm()
+  let id
+  try {
+    const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+    id = (await r.json()).id
+  } catch { return flash('✗ send failed', 2000) }
+  flash('⏳ Grok working…', 0)
+  // long-poll until the worker replies
+  while (true) {
+    try {
+      const r = await fetch(ENDPOINT + '/wait/' + encodeURIComponent(id))
+      const d = await r.json()
+      if (d.done) return flash('✓ ' + (d.result || 'done'), 4000)
+    } catch { return flash('✗ lost connection', 2000) }
+  }
 }
-function flash(msg) {
-  const prev = badge.textContent
+function flash(msg, ms) {
+  const prev = '👁 lookout'
   badge.textContent = msg
-  setTimeout(() => { badge.textContent = prev }, 1200)
+  if (ms) setTimeout(() => { badge.textContent = prev }, ms)
 }
 
 console.log('%c[lookout] ready — ⌘⇧L to toggle', 'color:#7c3aed;font-weight:600')
