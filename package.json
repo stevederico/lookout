@@ -1,0 +1,24 @@
+{
+  "name": "lookout",
+  "version": "0.1.0",
+  "description": "your agent's eyes on your browser — dev-only Vite overlay to point at a page element and send it (with a note) to your agent.",
+  "type": "module",
+  "main": "src/plugin.js",
+  "exports": {
+    ".": "./src/plugin.js"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "vite-plugin",
+    "agent",
+    "agent",
+    "dev-tools",
+    "overlay"
+  ],
+  "peerDependencies": {
+    "vite": ">=4"
+  },
+  "license": "MIT"
+}
