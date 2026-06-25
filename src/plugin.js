@@ -44,6 +44,7 @@ export default function lookout(opts = {}) {
       const pending = [] // selections awaiting a worker
       const results = new Map() // id -> result string (worker reply)
       const waiters = new Map() // id -> res (held browser long-poll)
+      const nextWaiters = [] // held worker /next long-polls: { res, timer }
       let seq = 0
       const log = (m) => server.config.logger.info(`  \x1b[35m[lookout]\x1b[0m ${m}`)
 
@@ -68,11 +69,18 @@ export default function lookout(opts = {}) {
             const data = JSON.parse(await readBody(req))
             const id = `${++seq}-${Date.now()}`
             const item = { id, ...data, time: new Date().toISOString() }
-            pending.push(item)
             const dest = path.resolve(server.config.root, outFile)
             fs.mkdirSync(path.dirname(dest), { recursive: true })
             fs.writeFileSync(dest, JSON.stringify(item, null, 2))
-            log(`${data.note ? `"${data.note}" — ` : ''}queued (${pending.length} pending) id=${id}`)
+            // hand straight to a waiting worker if one is parked on /next
+            const w = nextWaiters.shift()
+            if (w) {
+              clearTimeout(w.timer)
+              json(w.res, 200, item)
+            } else {
+              pending.push(item)
+            }
+            log(`${data.note ? `"${data.note}" — ` : ''}queued id=${id}`)
             return json(res, 200, { ok: true, id })
           } catch (e) {
             return json(res, 400, { ok: false, error: String(e) })
@@ -95,13 +103,17 @@ export default function lookout(opts = {}) {
           return
         }
 
-        // --- worker claims the next pending selection ---
+        // --- worker claims the next pending selection (long-polls if none) ---
         if (req.method === 'GET' && url === '/next') {
-          if (!pending.length) {
+          if (pending.length) return json(res, 200, pending.shift())
+          const timer = setTimeout(() => {
+            const i = nextWaiters.findIndex((x) => x.res === res)
+            if (i >= 0) nextWaiters.splice(i, 1)
             res.statusCode = 204
-            return res.end()
-          }
-          return json(res, 200, pending.shift())
+            res.end() // worker re-polls
+          }, waitMs)
+          nextWaiters.push({ res, timer })
+          return
         }
 
         // --- worker posts its reply ---
