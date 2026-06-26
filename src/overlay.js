@@ -136,10 +136,14 @@ function closeForm() { form && form.remove(); form = null }
 
 async function send(payload) {
   closeForm()
+  const tSend = Date.now()
+  payload.clientSent = tSend
+  console.log('%c[lookout] ⏱ send @0ms', 'color:#7c3aed')
   let id
   try {
     const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
     id = (await r.json()).id
+    console.log('[lookout] ⏱ queued (id=' + id + ') @' + (Date.now() - tSend) + 'ms')
   } catch { return flash('✗ send failed', 2000) }
   flash('⏳ Grok working…', 0)
   // long-poll until the worker replies
@@ -147,7 +151,19 @@ async function send(payload) {
     try {
       const r = await fetch(ENDPOINT + '/wait/' + encodeURIComponent(id))
       const d = await r.json()
-      if (d.done) return flash('✓ ' + (d.result || 'done'), 4000)
+      if (d.done) {
+        const total = Date.now() - tSend
+        console.log('%c[lookout] ⏱ DONE @' + total + 'ms', 'color:#7c3aed;font-weight:700', d.timing || {})
+        if (d.timing) {
+          console.table({
+            'wait for worker (queue→claim)': d.timing.waitMs + 'ms',
+            'Grok edit (claim→done)': d.timing.editMs + 'ms',
+            'server total (queue→done)': d.timing.totalMs + 'ms',
+            'client round-trip (send→toast)': total + 'ms',
+          })
+        }
+        return flash('✓ ' + (d.result || 'done') + ' · ' + total + 'ms', 5000)
+      }
     } catch { return flash('✗ lost connection', 2000) }
   }
 }

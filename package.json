@@ -20,5 +20,8 @@
   "peerDependencies": {
     "vite": ">=4"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "agent-sdk": "0.3.182"
+  }
 }
