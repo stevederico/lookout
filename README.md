@@ -1,14 +1,33 @@
 # Lookout
 
-your agent's eyes on your browser. A dev-only Vite overlay that lets you point at any element on your localhost app and send it — with a note — straight to your agent.
+Point at any element in your running dev app, type a note, and have it edited — in under a second.
 
-No browser extension. Loads only in dev, ships to nobody.
+No browser extension. Dev-only. Ships to nobody.
 
 ## How it works
 
-1. **Overlay** (injected in dev) highlights the element under your cursor; click to select, type a note.
-2. **Bridge** (the plugin's dev-server middleware) writes the selection to `.lookout/selection.json`.
-3. **Your agent reads** that file → sees the element + your note → edits the right source.
+```
+[browser overlay] --click+note--> [Vite bridge] --/next--> [Grok daemon] --edit--> source file
+       ^                                |                        |
+       |<------ ✓ result (long-poll) ---|                        |--append--> .lookout/changes.log
+                                                                                      |
+                                                              [self-wake watcher] --wakes--> your agent
+```
+
+- **Overlay** (injected in dev only): hover-highlight, click an element, type a note → POSTs the selection.
+- **Bridge** (Vite middleware, REST + long-poll): queues selections, hands them to a worker, relays the reply back to the browser.
+- **Grok daemon** (warm worker, `XAI_API_KEY`): finds the source file, asks Grok for a surgical edit, applies it. ~0.6–1s. Logs every change.
+- **Supervisor loop** (optional): a debounced watcher wakes your main your agent session to review batches of edits — off the critical path, so edits stay fast.
+
+## Why this architecture
+
+| Worker | Speed | Context | Notes |
+|---|---|---|---|
+| Self-wake into a running agent session | ~18s | richest | reloads the whole chat transcript every edit — unusable |
+| `your agent` | ~5s | repo only | fresh boot each click |
+| **Grok daemon** | **~0.6s** | matched file (+ engine, optional) | warm, the fast path |
+
+Speed comes from a **warm** worker holding context in memory, not a cold load or a giant transcript per edit. Your agent supervises asynchronously instead of being in the loop.
 
 ## Install
 
@@ -18,47 +37,36 @@ bun add -D lookout
 
 ## Usage
 
+**1. Add the plugin** (overlay + bridge):
+
 ```js
 // vite.config.js
 import { defineConfig } from 'vite'
 import lookout from 'lookout'
 
-export default defineConfig({
-  plugins: [lookout()],
-})
+export default defineConfig({ plugins: [lookout()] })
 ```
 
-Start dev (`bun run dev`), then:
+**2. Start the daemon** (the fast editor). Needs `XAI_API_KEY` in env or `~/Dropbox/BixbyApps/DefaultEnv/.env`:
 
-- Press **⌘⇧L** (or click the `👁 lookout` badge) to toggle select mode.
-- Hover to highlight, **click** an element.
-- Type a note (optional) → **Enter** to send.
-- Selection lands in `.lookout/selection.json`.
-
-Then tell your agent: **"read the lookout selection"** — it picks up the element + note and acts.
-
-## Options
-
-```js
-lookout({
-  outFile: '.lookout/selection.json', // where selections are written (relative to project root)
-})
+```bash
+LOOKOUT_ROOT="$PWD" LOOKOUT_PORT=5173 node node_modules/lookout/bin/grok-daemon.mjs
 ```
 
-## Selection shape
+**3. Use it:** start dev (`bun run dev`), press **⌘⇧L** (or click the `👁 lookout` badge), click an element, type the change, Enter. Edited in <1s, page hot-reloads.
 
-```json
-{
-  "selector": "main > div.card:nth-of-type(2) > button",
-  "tag": "button",
-  "text": "Submit",
-  "html": "<button class=\"card\">Submit</button>",
-  "rect": { "x": 120, "y": 340, "w": 90, "h": 36 },
-  "url": "http://localhost:5173/",
-  "note": "make this bigger and primary-colored",
-  "time": "2026-06-25T00:00:00.000Z"
-}
-```
+## Daemon env
+
+| Var | Default | Meaning |
+|---|---|---|
+| `LOOKOUT_PORT` | `5191` | your Vite dev port |
+| `LOOKOUT_ROOT` | `cwd` | project root to edit |
+| `LOOKOUT_MODEL` | `grok-4.20-0309-non-reasoning` | xAI model (use `grok-4.3` for harder edits) |
+| `XAI_API_KEY` | from DefaultEnv `.env` | xAI key |
+
+## Change log
+
+Every applied edit is appended as JSONL to `.lookout/changes.log` (gitignored) — selector, note, file, find/replace, summary. The supervisor loop reads this to review what the daemon did.
 
 ## License
 
