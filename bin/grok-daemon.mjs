@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Lookout Grok daemon — warm worker that edits source via the xAI (Grok) API.
-// Uses XAI_API_KEY (env or DefaultEnv .env).
+// Uses XAI_API_KEY (env or a local .env file).
 //   node node_modules/lookout/bin/grok-daemon.mjs   (run from project root)
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 
 const PORT = process.env.LOOKOUT_PORT || '5191'
@@ -18,7 +17,7 @@ const log = (...a) => console.log(`\x1b[2m${ts()}\x1b[0m \x1b[35m[lookout-grok]\
 
 function loadKey() {
   if (process.env.XAI_API_KEY) return process.env.XAI_API_KEY
-  const f = path.join(os.homedir(), 'Dropbox/BixbyApps/DefaultEnv/.env')
+  const f = process.env.LOOKOUT_ENV || path.join(ROOT, '.env')
   try {
     const line = fs.readFileSync(f, 'utf8').split('\n').find((l) => l.startsWith('XAI_API_KEY='))
     if (line) return line.slice('XAI_API_KEY='.length).trim().replace(/^['"]|['"]$/g, '')
@@ -26,7 +25,7 @@ function loadKey() {
   return null
 }
 const KEY = loadKey()
-if (!KEY) { log('FATAL: no XAI_API_KEY (env or DefaultEnv .env)'); process.exit(1) }
+if (!KEY) { log('FATAL: no XAI_API_KEY (set env, .env, or LOOKOUT_ENV)'); process.exit(1) }
 
 // append each applied edit to a change-log the supervisor (main agent) reviews
 const CHANGES = path.join(ROOT, '.lookout', 'changes.log')

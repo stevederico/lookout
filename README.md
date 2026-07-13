@@ -47,7 +47,7 @@ import lookout from 'lookout'
 export default defineConfig({ plugins: [lookout()] })
 ```
 
-**2. Start the daemon** (the fast editor). Needs `XAI_API_KEY` in env or `~/Dropbox/BixbyApps/DefaultEnv/.env`:
+**2. Start the daemon** (the fast editor). Needs `XAI_API_KEY` in the env or a local `.env` (copy `.env.example`; override the path with `LOOKOUT_ENV`):
 
 ```bash
 LOOKOUT_ROOT="$PWD" LOOKOUT_PORT=5173 node node_modules/lookout/bin/grok-daemon.mjs
@@ -62,7 +62,7 @@ LOOKOUT_ROOT="$PWD" LOOKOUT_PORT=5173 node node_modules/lookout/bin/grok-daemon.
 | `LOOKOUT_PORT` | `5191` | your Vite dev port |
 | `LOOKOUT_ROOT` | `cwd` | project root to edit |
 | `LOOKOUT_MODEL` | `grok-4.20-0309-non-reasoning` | xAI model (use `grok-4.3` for harder edits) |
-| `XAI_API_KEY` | from DefaultEnv `.env` | xAI key |
+| `XAI_API_KEY` | from `.env` (or `LOOKOUT_ENV`) | xAI key |
 
 ## Change log
 
