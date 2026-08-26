@@ -59,9 +59,9 @@ LOOKOUT_ROOT="$PWD" LOOKOUT_PORT=5173 node node_modules/lookout/bin/grok-daemon.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `LOOKOUT_PORT` | `5191` | your Vite dev port |
+| `LOOKOUT_PORT` | `5173` | your Vite dev port |
 | `LOOKOUT_ROOT` | `cwd` | project root to edit |
-| `LOOKOUT_MODEL` | `grok-4.20-0309-non-reasoning` | xAI model (use `grok-4.3` for harder edits) |
+| `LOOKOUT_MODEL` | `grok-4.6` | xAI model (`LOOKOUT_REASONING=low` default) |
 | `XAI_API_KEY` | from `.env` (or `LOOKOUT_ENV`) | xAI key |
 
 ## Change log
