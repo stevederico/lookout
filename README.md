@@ -1,73 +1,167 @@
-# Lookout
+<div align="center">
+  <img src="docs/screenshots/example.png" alt="Lookout badge on a Vite app" width="100%" />
+  <h1 align="center" style="border-bottom: none; margin-bottom: 0;">Lookout</h1>
+  <h3 align="center" style="margin-top: 0; font-weight: normal;">
+    click an element, type a note, grok edits the source
+  </h3>
+</div>
 
-Point at any element in your running dev app, type a note, and have it edited — in under a second.
+<br />
 
-No browser extension. Dev-only. Ships to nobody.
-
-## How it works
-
-```
-[browser overlay] --click+note--> [Vite bridge] --/next--> [Grok daemon] --edit--> source file
-       ^                                |                        |
-       |<------ ✓ result (long-poll) ---|                        |--append--> .lookout/changes.log
-                                                                                      |
-                                                              [self-wake watcher] --wakes--> your agent
-```
-
-- **Overlay** (injected in dev only): hover-highlight, click an element, type a note → POSTs the selection.
-- **Bridge** (Vite middleware, REST + long-poll): queues selections, hands them to a worker, relays the reply back to the browser.
-- **Grok daemon** (warm worker, `XAI_API_KEY`): finds the source file, asks Grok for a surgical edit, applies it. ~0.6–1s. Logs every change.
-- **Supervisor loop** (optional): a debounced watcher wakes your main your agent session to review batches of edits — off the critical path, so edits stay fast.
-
-## Why this architecture
-
-| Worker | Speed | Context | Notes |
-|---|---|---|---|
-| Self-wake into a running agent session | ~18s | richest | reloads the whole chat transcript every edit — unusable |
-| `your agent` | ~5s | repo only | fresh boot each click |
-| **Grok daemon** | **~0.6s** | matched file (+ engine, optional) | warm, the fast path |
-
-Speed comes from a **warm** worker holding context in memory, not a cold load or a giant transcript per edit. Your agent supervises asynchronously instead of being in the loop.
-
-## Install
+## 🚀 Quick Start
 
 ```bash
-bun add -D lookout
+git clone https://github.com/stevederico/lookout.git
+cd lookout/example
+bun install
+bun run dev
 ```
 
-## Usage
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). In a second terminal:
 
-**1. Add the plugin** (overlay + bridge):
+```bash
+cd lookout/example
+LOOKOUT_ENV=../.env node ../bin/grok-daemon.mjs
+```
+
+Copy `.env.example` to `.env` and set `XAI_API_KEY`. Press **⌘⇧L**, click an element, type the change, Enter. The page hot-reloads.
+
+<br />
+
+## ✨ What's Included
+
+### 👁 **Dev overlay**
+- **⌘⇧L** or the `lookout` badge toggles pick mode
+- **Hover** highlights the element; **click** opens a note
+- **Dev-only** — Vite `apply: 'serve'`. No browser extension. No production bundle
+
+### ⚡ **Warm Grok daemon**
+- **Finds** the source file from the clicked text
+- **Asks** Grok for a surgical find/replace
+- **Writes** the file. Live run on grok-4.6: **1.8s**
+
+### 🔌 **Vite bridge**
+- **POST /__lookout** queues a selection
+- **GET /__lookout/next** is the daemon long-poll
+- **GET /__lookout/wait/:id** is the browser long-poll
+
+<br />
+
+## 📖 How It Works
+
+```
+[overlay] --click+note--> [Vite /__lookout] --/next--> [Grok daemon] --edit--> source file
+                                |
+                    long-poll /wait/:id <-- result
+```
+
+1. The plugin injects the overlay into the dev page only.
+2. A click POSTs selector, text, HTML, and your note.
+3. The daemon claims `/next`, walks the project for that text, calls `https://api.x.ai/v1/chat/completions`.
+4. It applies the returned `find` / `replace` and POSTs `/done`. Vite HMR reloads the page.
 
 ```js
-// vite.config.js
 import { defineConfig } from 'vite'
 import lookout from 'lookout'
 
 export default defineConfig({ plugins: [lookout()] })
 ```
 
-**2. Start the daemon** (the fast editor). Needs `XAI_API_KEY` in the env or a local `.env` (copy `.env.example`; override the path with `LOOKOUT_ENV`):
+<br />
 
-```bash
-LOOKOUT_ROOT="$PWD" LOOKOUT_PORT=5173 node node_modules/lookout/bin/grok-daemon.mjs
+## ⚙️ Configuration
+
+Copy `.env.example` to `.env` (gitignored). Never commit a key.
+
 ```
-
-**3. Use it:** start dev (`bun run dev`), press **⌘⇧L** (or click the `👁 lookout` badge), click an element, type the change, Enter. Edited in <1s, page hot-reloads.
-
-## Daemon env
+XAI_API_KEY=
+```
 
 | Var | Default | Meaning |
 |---|---|---|
-| `LOOKOUT_PORT` | `5173` | your Vite dev port |
-| `LOOKOUT_ROOT` | `cwd` | project root to edit |
-| `LOOKOUT_MODEL` | `grok-4.6` | xAI model (`LOOKOUT_REASONING=low` default) |
-| `XAI_API_KEY` | from `.env` (or `LOOKOUT_ENV`) | xAI key |
+| `XAI_API_KEY` | `.env` or `LOOKOUT_ENV` | xAI key. Server-side only |
+| `LOOKOUT_PORT` | `5173` | Vite dev port |
+| `LOOKOUT_HOST` | `http://127.0.0.1:$PORT` | Bridge origin |
+| `LOOKOUT_ROOT` | `cwd` | Tree the daemon may edit |
+| `LOOKOUT_MODEL` | `grok-4.6` | xAI model |
+| `LOOKOUT_REASONING` | `low` | `reasoning_effort` |
+| `LOOKOUT_ENV` | `$LOOKOUT_ROOT/.env` | Alternate env file |
 
-## Change log
+In your own Vite app:
 
-Every applied edit is appended as JSONL to `.lookout/changes.log` (gitignored) — selector, note, file, find/replace, summary. The supervisor loop reads this to review what the daemon did.
+```bash
+bun add -d lookout
+LOOKOUT_ROOT="$PWD" node node_modules/lookout/bin/grok-daemon.mjs
+```
 
-## License
+Edits append JSONL to `.lookout/changes.log` (gitignored).
 
-MIT
+<br />
+
+## 🧩 Tech Stack
+
+| Technology | Version | Purpose |
+|---|---|---|
+| **Vite** | `>=4` (example `5.4`) | Plugin + HMR |
+| **Node** | 18+ | Daemon (`fetch`) |
+| **Grok 4.6** | xAI Chat Completions | Surgical edit |
+| **Bun** | optional | Install + `bun run dev` |
+
+Zero runtime dependencies. Peer: Vite.
+
+<br />
+
+## 🧪 Smoke
+
+```bash
+XAI_API_KEY=… bun run smoke
+```
+
+Pings grok-4.6. Skips the live call if no key.
+
+<br />
+
+## 🤝 Contributing
+
+```bash
+git clone https://github.com/stevederico/lookout.git
+cd lookout/example && bun install && bun run dev
+```
+
+Keep the daemon on `127.0.0.1`. Do not commit `.env`.
+
+<br />
+
+## 💬 Community
+
+- [Issues](https://github.com/stevederico/lookout/issues)
+- [x.com/stevederico](https://x.com/stevederico)
+
+<br />
+
+## 🙏 Acknowledgements
+
+- **[Vite](https://vite.dev)** — dev server and plugin API
+- **[xAI Grok](https://docs.x.ai)** — edit model
+
+<br />
+
+## ⭐ Try It
+
+```bash
+bun add -d lookout
+```
+
+Click. Note. Edit.
+
+<br />
+
+## 📄 License
+
+[MIT License](LICENSE)
+
+<br />
+
+<div align="center">
+  <sub>Built with Vite and Grok. Dev-only. <a href="https://github.com/stevederico/lookout">Star the repo</a>.</sub>
+</div>

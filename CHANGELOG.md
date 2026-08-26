@@ -1,3 +1,8 @@
+0.4.0
+
+  Meet readme standard
+  Add product screenshot
+
 0.3.0
 
   Default grok-4.6
