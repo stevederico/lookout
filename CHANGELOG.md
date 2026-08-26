@@ -1,3 +1,7 @@
+0.5.0
+
+  Name your agent
+
 0.4.0
 
   Meet readme standard
