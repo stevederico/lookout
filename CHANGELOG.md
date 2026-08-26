@@ -1,3 +1,9 @@
+0.3.0
+
+  Default grok-4.6
+  Bind 127.0.0.1
+  Use Vite port
+
 0.2.0
 
   Add two-tier architecture

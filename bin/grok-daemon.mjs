@@ -5,10 +5,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const PORT = process.env.LOOKOUT_PORT || '5191'
-const HOST = process.env.LOOKOUT_HOST || `http://localhost:${PORT}`
+const PORT = process.env.LOOKOUT_PORT || '5173'
+const HOST = process.env.LOOKOUT_HOST || `http://127.0.0.1:${PORT}`
 const ROOT = process.env.LOOKOUT_ROOT || process.cwd()
-const MODEL = process.env.LOOKOUT_MODEL || 'grok-4.20-0309-non-reasoning'
+const MODEL = process.env.LOOKOUT_MODEL || 'grok-4.6'
 const BASE = `${HOST}/__lookout`
 const API = 'https://api.x.ai/v1/chat/completions'
 
@@ -73,7 +73,7 @@ async function callGrok(file, content, sel) {
       model: MODEL,
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       response_format: { type: 'json_object' },
-      temperature: 0,
+      reasoning_effort: process.env.LOOKOUT_REASONING || 'low',
     }),
   })
   if (!r.ok) throw new Error(`grok ${r.status}: ${(await r.text()).slice(0, 200)}`)

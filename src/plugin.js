@@ -8,13 +8,13 @@ const RESOLVED_ID = '\0' + VIRTUAL_ID
 /**
  * Lookout — dev-only Vite plugin.
  * Click-to-select overlay + a small REST bridge with long-polling so the browser
- * can wait for your agent's reply.
+ * can wait for Grok's reply.
  *
  * Browser endpoints:
  *   POST /__lookout            submit a selection → { id }
  *   GET  /__lookout/wait/:id   long-poll for the result → { done, result }
  *
- * Worker endpoints (your agent / wake-loop):
+ * Worker endpoints (Grok daemon):
  *   GET  /__lookout/next       claim the oldest pending selection → selection | 204
  *   POST /__lookout/done       { id, result } → resolves the browser's wait
  *
