@@ -27,7 +27,7 @@ function loadKey() {
 const KEY = loadKey()
 if (!KEY) { log('FATAL: no XAI_API_KEY (set env, .env, or LOOKOUT_ENV)'); process.exit(1) }
 
-// append each applied edit to a change-log the supervisor (main agent) reviews
+// append each applied edit to a change-log your agent reviews
 const CHANGES = path.join(ROOT, '.lookout', 'changes.log')
 function appendChange(entry) {
   try {
