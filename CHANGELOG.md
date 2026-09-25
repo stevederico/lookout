@@ -1,3 +1,8 @@
+0.7.0
+
+  Restore Grok daemon
+  Restore example page
+
 0.6.0
 
   Add MIT license
