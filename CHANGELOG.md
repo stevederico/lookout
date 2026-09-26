@@ -1,3 +1,8 @@
+0.8.0
+
+  Fix example install
+  Use npm install
+
 0.7.0
 
   Restore Grok daemon

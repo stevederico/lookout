@@ -13,8 +13,8 @@
 ```bash
 git clone https://github.com/stevederico/lookout.git
 cd lookout/example
-bun install
-bun run dev
+npm install
+npm run dev
 ```
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173). In a second terminal:
